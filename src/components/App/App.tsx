@@ -82,15 +82,23 @@ export default function App() {
 
         {/* Умовний рендеринг NoteList */}
         {data?.results && data.results.length > 0 ? (
-                    <NoteList notes={data.results} onDelete={handleDelete} />
-                ) : (
-                    !isLoading && <p>No notes found</p>
-                )}
-            </main>
+          <NoteList notes={data.results} onDelete={handleDelete} />
+        ) : (
+          !isLoading && <p>No notes found</p>
+        )}
+      </main>
 
       {isModalOpen && (
         <Modal onClose={() => setIsModalOpen(false)}>
-          <NoteForm onClose={() => setIsModalOpen(false)} />
+          <NoteForm
+            onClose={() => setIsModalOpen(false)}
+            // Функція для скидання станів App після успіху
+            onNoteCreated={() => {
+              setSearch(""); // Скидаємо пошук
+              setPage(1); // Повертаємося на першу сторінку
+              // TanStack Query виконає новий запит, оскільки queryKey змінився
+            }}
+          />
         </Modal>
       )}
     </div>
