@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDebounce } from "use-debounce";
 
 import { fetchNotes, deleteNote } from "../../services/noteService";
 import { PER_PAGE } from "../../config";
-import type { FetchNotesResponse } from "../../types/note";
+import type { FetchNotesResponse } from "../../services/noteService";
 
 import SearchBox from "../SearchBox/SearchBox";
 import Pagination from "../Pagination/Pagination";
@@ -32,14 +32,13 @@ export default function App() {
         perPage: PER_PAGE,
         search: debouncedSearch,
       }),
-    keepPreviousData: true,
+    placeholderData: (previousData) => previousData,
   });
 
   // 2. Мутація для видалення нотатки
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteNote(id),
     onSuccess: () => {
-      // Інвалідація запиту для оновлення списку після видалення
       queryClient.invalidateQueries({ queryKey: ["notes"] });
     },
     onError: (error) => {
@@ -48,9 +47,7 @@ export default function App() {
     },
   });
 
-  // 3. Обробник видалення
   const handleDelete = (id: string) => {
-    // Викликаємо мутацію
     deleteMutation.mutate(id);
   };
 
@@ -63,7 +60,7 @@ export default function App() {
         {data && data.totalPages > 1 && (
           <Pagination
             current={page}
-            totalPages={data.totalPages}
+            totalPages={data?.totalPages ?? 1}
             onPageChange={(p) => setPage(p)}
           />
         )}
@@ -79,17 +76,17 @@ export default function App() {
       <main>
         {/* Додаємо індикатори статусу */}
         {isLoading && <p>Loading notes...</p>}
-        {deleteMutation.isLoading && <p>Deleting note...</p>}
+        {deleteMutation.isPending && <p>Deleting note...</p>}
         {isError && <p>Something went wrong loading notes.</p>}
         {deleteMutation.isError && <p>Error deleting note.</p>}
 
         {/* Умовний рендеринг NoteList */}
-        {data && data.results && data.results.length > 0 ? (
-          <NoteList notes={data.results} onDelete={handleDelete} />
-        ) : (
-          !isLoading && !isError && <p>No notes found.</p>
-        )}
-      </main>
+        {data?.results && data.results.length > 0 ? (
+                    <NoteList notes={data.results} onDelete={handleDelete} />
+                ) : (
+                    !isLoading && <p>No notes found</p>
+                )}
+            </main>
 
       {isModalOpen && (
         <Modal onClose={() => setIsModalOpen(false)}>

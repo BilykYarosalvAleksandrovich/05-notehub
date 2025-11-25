@@ -1,9 +1,8 @@
-import React from "react";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createNote } from "../../services/noteService";
-import { NoteTag } from "../../types/note";
+import type { NoteTag } from "../../types/note";
 import css from "./NoteForm.module.css";
 
 
@@ -111,9 +110,9 @@ export default function NoteForm({ onClose }: NoteFormProps) {
               <button
                 type="submit"
                 className={css.submitButton}
-                disabled={isSubmitting || mutation.isLoading}
+                disabled={isSubmitting || mutation.isPending}
               >
-                {mutation.isLoading ? "Creating..." : "Create note"}
+                {mutation.isPending ? "Creating..." : "Create note"}
               </button>
             </div>
 
