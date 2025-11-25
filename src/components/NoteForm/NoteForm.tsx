@@ -1,29 +1,64 @@
 import React from "react";
+import { Formik, Form, Field, ErrorMessage } from "formik";
+import * as Yup from "yup";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { createNote } from "../../services/noteService";
+import { NoteTag } from "../../types/note";
+import css from "./NoteForm.module.css";
+
+
+interface NoteFormProps {
+  onClose: () => void;
+}
+
+
+const validTags: NoteTag[] = ["Todo", "Work", "Personal", "Meeting", "Shopping"];
+
+const schema = Yup.object().shape({
+  title: Yup.string()
+    .min(3, "Title must be at least 3 characters")
+    .max(50, "Title must be at most 50 characters")
+    .required("Title is required"),
+  content: Yup.string().max(500, "Content must be at most 500 characters"),
+  tag: Yup.string()
+    .oneOf(validTags, "Invalid tag selected")
+    .required("Tag is required"),
+});
+
 
 export default function NoteForm({ onClose }: NoteFormProps) {
-  const qc = useQueryClient();
-  const mutation = useMutation(
-    (dto: { title: string; content?: string; tag: NoteTag }) => createNote(dto),
-    {
-      onSuccess: () => {
-        qc.invalidateQueries(["notes"]);
-        onClose();
-      },
-    }
-  );
+  const queryClient = useQueryClient(); 
+
+  
+  const mutation = useMutation({
+    mutationFn: (dto: { title: string; content?: string; tag: NoteTag }) =>
+      createNote(dto),
+    onSuccess: () => {
+      
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+      
+      onClose();
+    },
+    onError: (error) => {
+      console.error("Error creating note:", error);
+      alert("Failed to create note. See console for details.");
+    },
+  });
 
   return (
     <div>
       <h2>Create note</h2>
       <Formik
-        initialValues={{ title: "", content: "", tag: "Todo" }}
+        initialValues={{ title: "", content: "", tag: "Todo" as NoteTag }}
         validationSchema={schema}
         onSubmit={(values) => {
-          mutation.mutate(values);
+          
+          mutation.mutate(values); 
         }}
       >
         {({ isSubmitting }) => (
           <Form className={css.form}>
+            {/* Title Field */}
             <div className={css.formGroup}>
               <label htmlFor="title">Title</label>
               <Field id="title" name="title" className={css.input} />
@@ -34,13 +69,14 @@ export default function NoteForm({ onClose }: NoteFormProps) {
               />
             </div>
 
+            {/* Content Field (Textarea) */}
             <div className={css.formGroup}>
               <label htmlFor="content">Content</label>
               <Field
                 id="content"
                 name="content"
                 as="textarea"
-                rows={6}
+                rows={8} 
                 className={css.textarea}
               />
               <ErrorMessage
@@ -50,18 +86,20 @@ export default function NoteForm({ onClose }: NoteFormProps) {
               />
             </div>
 
+            {/* Tag Field (Select) */}
             <div className={css.formGroup}>
               <label htmlFor="tag">Tag</label>
               <Field id="tag" name="tag" as="select" className={css.select}>
-                <option value="Todo">Todo</option>
-                <option value="Work">Work</option>
-                <option value="Personal">Personal</option>
-                <option value="Meeting">Meeting</option>
-                <option value="Shopping">Shopping</option>
+                {validTags.map((tag) => (
+                  <option key={tag} value={tag}>
+                    {tag}
+                  </option>
+                ))}
               </Field>
               <ErrorMessage name="tag" component="span" className={css.error} />
             </div>
 
+            {/* Actions */}
             <div className={css.actions}>
               <button
                 type="button"
@@ -73,11 +111,17 @@ export default function NoteForm({ onClose }: NoteFormProps) {
               <button
                 type="submit"
                 className={css.submitButton}
-                disabled={isSubmitting}
+                disabled={isSubmitting || mutation.isLoading}
               >
-                Create note
+                {mutation.isLoading ? "Creating..." : "Create note"}
               </button>
             </div>
+
+            {mutation.isError && (
+              <p className={css.apiError}>
+                Error: Failed to create note. Please try again.
+              </p>
+            )}
           </Form>
         )}
       </Formik>

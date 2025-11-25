@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDebounce } from "use-debounce";
 
 import { fetchNotes, deleteNote } from "../../services/noteService";
@@ -23,26 +23,35 @@ export default function App() {
 
   const queryClient = useQueryClient();
 
-  const { data, isLoading, isError } = useQuery<FetchNotesResponse>(
-    ["notes", page, debouncedSearch],
-    () =>
+  // 1. Запит для отримання нотаток
+  const { data, isLoading, isError } = useQuery<FetchNotesResponse>({
+    queryKey: ["notes", page, debouncedSearch],
+    queryFn: () =>
       fetchNotes({
         page,
         perPage: PER_PAGE,
         search: debouncedSearch,
       }),
-    {
-      keepPreviousData: true,
-    }
-  );
+    keepPreviousData: true,
+  });
 
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteNote(id);
-      queryClient.invalidateQueries(["notes"]);
-    } catch (err) {
-      console.error(err);
-    }
+  // 2. Мутація для видалення нотатки
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteNote(id),
+    onSuccess: () => {
+      // Інвалідація запиту для оновлення списку після видалення
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+    },
+    onError: (error) => {
+      console.error("Error deleting note:", error);
+      alert("Failed to delete note. See console for details.");
+    },
+  });
+
+  // 3. Обробник видалення
+  const handleDelete = (id: string) => {
+    // Викликаємо мутацію
+    deleteMutation.mutate(id);
   };
 
   return (
@@ -50,14 +59,17 @@ export default function App() {
       <header className={css.toolbar}>
         <SearchBox value={search} onChange={setSearch} />
 
-        <Pagination
-          current={page}
-          totalPages={data?.totalPages ?? 1}
-          onPageChange={(p) => setPage(p)}
-        />
+        {/* Умовний рендеринг пагінації: тільки якщо сторінок > 1 */}
+        {data && data.totalPages > 1 && (
+          <Pagination
+            current={page}
+            totalPages={data.totalPages}
+            onPageChange={(p) => setPage(p)}
+          />
+        )}
 
         <button
-          className={css.createButton}
+          className={css.button} // Змінив на css.button згідно з вимогами
           onClick={() => setIsModalOpen(true)}
         >
           Create note +
@@ -65,13 +77,17 @@ export default function App() {
       </header>
 
       <main>
-        {isLoading && <p>Loading...</p>}
-        {isError && <p>Something went wrong</p>}
+        {/* Додаємо індикатори статусу */}
+        {isLoading && <p>Loading notes...</p>}
+        {deleteMutation.isLoading && <p>Deleting note...</p>}
+        {isError && <p>Something went wrong loading notes.</p>}
+        {deleteMutation.isError && <p>Error deleting note.</p>}
 
+        {/* Умовний рендеринг NoteList */}
         {data && data.results && data.results.length > 0 ? (
           <NoteList notes={data.results} onDelete={handleDelete} />
         ) : (
-          !isLoading && <p>No notes found</p>
+          !isLoading && !isError && <p>No notes found.</p>
         )}
       </main>
 
