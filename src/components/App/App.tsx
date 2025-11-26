@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useDebounce } from "use-debounce";
 
-import { fetchNotes } from "../../services/noteService"; // deleteNote більше не імпортуємо
+import { fetchNotes } from "../../services/noteService";
 import { PER_PAGE } from "../../config";
 import type { FetchNotesResponse } from "../../services/noteService";
 
@@ -35,19 +35,16 @@ export default function App() {
           perPage: PER_PAGE,
           search: debouncedSearch,
         }),
-      // Використовуємо функцію для плавного переходу сторінок
       placeholderData: (previousData) => previousData,
     }
   );
-
-  // ⬅️ Видалено: handleDelete (логіка тепер у NoteList)
 
   return (
     <div className={css.app}>
       <header className={css.toolbar}>
         <SearchBox value={search} onChange={handleSearchChange} />
 
-        {/* Умовний рендеринг пагінації */}
+        {/* Пагінація використовує data.totalPages */}
         {data && data.totalPages > 1 && (
           <Pagination
             current={page}
@@ -62,16 +59,13 @@ export default function App() {
       </header>
 
       <main>
-        {/* Додаємо індикатори статусу */}
         {(isLoading || isFetching) && <p>Loading notes...</p>}
         {isError && <p>Something went wrong loading notes.</p>}
 
-        {/* Умовний рендеринг NoteList */}
-        {data?.results && data.results.length > 0 ? (
-          // ⬅️ Видалено: onDelete={handleDelete}
-          <NoteList notes={data.results} />
+        {/* ⬅️ ВИКОРИСТАННЯ data.notes */}
+        {data?.notes && data.notes.length > 0 ? (
+          <NoteList notes={data.notes} />
         ) : (
-          // Показуємо "No notes found" лише якщо немає завантаження і немає помилки
           !isLoading && !isError && <p>No notes found</p>
         )}
       </main>
@@ -80,10 +74,9 @@ export default function App() {
         <Modal onClose={() => setIsModalOpen(false)}>
           <NoteForm
             onClose={() => setIsModalOpen(false)}
-            // Колбек для скидання фільтрів після успішного створення
             onNoteCreated={() => {
-              setSearch(""); // Скидаємо пошук
-              setPage(1); // Повертаємося на першу сторінку
+              setSearch("");
+              setPage(1);
             }}
           />
         </Modal>

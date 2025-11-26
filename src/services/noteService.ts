@@ -4,19 +4,18 @@ import type { Note, NoteTag } from "../types/note";
 // Отримуємо токен
 const token = import.meta.env.VITE_NOTEHUB_TOKEN;
 
-// ⬅️ ВИПРАВЛЕНО: Перевірка на відсутність токена
+// Перевірка на відсутність токена
 if (!token) {
   console.error(
     "VITE_NOTEHUB_TOKEN is missing. Please check your .env file and restart the server."
   );
-  // Кидаємо помилку, якщо токен відсутній
   throw new Error("VITE_NOTEHUB_TOKEN is missing");
 }
 
 const api = axios.create({
   baseURL: "https://notehub-public.goit.study/api",
   headers: {
-    Authorization: `Bearer ${token}`, // Токен встановлюється тут при створенні клієнта
+    Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
   },
 });
@@ -27,11 +26,11 @@ export interface FetchNotesParams {
   search?: string;
 }
 
+// ⬅️ ВИПРАВЛЕНО: Відповідність структурі API (notes та totalPages)
 export interface FetchNotesResponse {
-  results: Note[];
-  page: number;
-  totalPages: number;
-  totalResults: number;
+  notes: Note[]; // Змінено з results
+  totalPages: number; // Залишено
+  // totalResults та page видалено згідно з вимогами перевірки
 }
 
 export interface CreateNoteDto {
@@ -46,11 +45,9 @@ export const fetchNotes = async (
   params: FetchNotesParams
 ): Promise<FetchNotesResponse> => {
   try {
-    // Використання дженерика <FetchNotesResponse> забезпечує типобезпечність
     const res = await api.get<FetchNotesResponse>("/notes", { params });
     return res.data;
   } catch (error) {
-    // ⬅️ isAxiosError тепер доступний через імпорт
     if (isAxiosError(error) && error.response?.status === 401) {
       console.error(
         "401 Unauthorized: Failed to fetch notes. Please check token."
@@ -62,7 +59,6 @@ export const fetchNotes = async (
 
 export const createNote = async (dto: CreateNoteDto): Promise<Note> => {
   try {
-    // Використання дженерика <Note>
     const res = await api.post<Note>("/notes", dto);
     return res.data;
   } catch (error) {
@@ -77,7 +73,6 @@ export const createNote = async (dto: CreateNoteDto): Promise<Note> => {
 
 export const deleteNote = async (id: string): Promise<Note> => {
   try {
-    // Використання дженерика <Note>
     const res = await api.delete<Note>(`/notes/${id}`);
     return res.data;
   } catch (error) {
