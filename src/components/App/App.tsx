@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useDebounce } from "use-debounce";
 
-import { fetchNotes, deleteNote } from "../../services/noteService";
+import { fetchNotes } from "../../services/noteService"; // deleteNote більше не імпортуємо
 import { PER_PAGE } from "../../config";
 import type { FetchNotesResponse } from "../../services/noteService";
 
@@ -21,40 +21,33 @@ export default function App() {
 
   const [debouncedSearch] = useDebounce(search, 500);
 
-  const queryClient = useQueryClient();
-
-  const { data, isLoading, isError } = useQuery<FetchNotesResponse>({
-    queryKey: ["notes", page, debouncedSearch],
-    queryFn: () =>
-      fetchNotes({
-        page,
-        perPage: PER_PAGE,
-        search: debouncedSearch,
-      }),
-    placeholderData: (previousData) => previousData,
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteNote(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
-    },
-    onError: (error) => {
-      console.error("Error deleting note:", error);
-      alert("Failed to delete note. See console for details.");
-    },
-  });
-
-  const handleDelete = (id: string) => {
-    deleteMutation.mutate(id);
+  const handleSearchChange = (newSearch: string) => {
+    setSearch(newSearch);
+    setPage(1);
   };
+
+  const { data, isLoading, isError, isFetching } = useQuery<FetchNotesResponse>(
+    {
+      queryKey: ["notes", page, debouncedSearch],
+      queryFn: () =>
+        fetchNotes({
+          page,
+          perPage: PER_PAGE,
+          search: debouncedSearch,
+        }),
+      // Використовуємо функцію для плавного переходу сторінок
+      placeholderData: (previousData) => previousData,
+    }
+  );
+
+  // ⬅️ Видалено: handleDelete (логіка тепер у NoteList)
 
   return (
     <div className={css.app}>
       <header className={css.toolbar}>
-        <SearchBox value={search} onChange={setSearch} />
+        <SearchBox value={search} onChange={handleSearchChange} />
 
-        {/* Умовний рендеринг пагінації: тільки якщо сторінок > 1 */}
+        {/* Умовний рендеринг пагінації */}
         {data && data.totalPages > 1 && (
           <Pagination
             current={page}
@@ -70,16 +63,16 @@ export default function App() {
 
       <main>
         {/* Додаємо індикатори статусу */}
-        {isLoading && <p>Loading notes...</p>}
-        {deleteMutation.isPending && <p>Deleting note...</p>}
+        {(isLoading || isFetching) && <p>Loading notes...</p>}
         {isError && <p>Something went wrong loading notes.</p>}
-        {deleteMutation.isError && <p>Error deleting note.</p>}
 
         {/* Умовний рендеринг NoteList */}
         {data?.results && data.results.length > 0 ? (
-          <NoteList notes={data.results} onDelete={handleDelete} />
+          // ⬅️ Видалено: onDelete={handleDelete}
+          <NoteList notes={data.results} />
         ) : (
-          !isLoading && <p>No notes found</p>
+          // Показуємо "No notes found" лише якщо немає завантаження і немає помилки
+          !isLoading && !isError && <p>No notes found</p>
         )}
       </main>
 
@@ -87,11 +80,10 @@ export default function App() {
         <Modal onClose={() => setIsModalOpen(false)}>
           <NoteForm
             onClose={() => setIsModalOpen(false)}
-            // Функція для скидання станів App після успіху
+            // Колбек для скидання фільтрів після успішного створення
             onNoteCreated={() => {
               setSearch(""); // Скидаємо пошук
               setPage(1); // Повертаємося на першу сторінку
-              // TanStack Query виконає новий запит, оскільки queryKey змінився
             }}
           />
         </Modal>

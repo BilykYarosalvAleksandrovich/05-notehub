@@ -1,4 +1,3 @@
-
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -6,6 +5,7 @@ import { createNote } from "../../services/noteService";
 import type { NoteTag } from "../../types/note";
 import css from "./NoteForm.module.css";
 
+// Додано пропс onNoteCreated
 interface NoteFormProps {
   onClose: () => void;
   onNoteCreated: () => void;
@@ -38,8 +38,8 @@ export default function NoteForm({ onClose, onNoteCreated }: NoteFormProps) {
       createNote(dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notes"] });
-      onNoteCreated();
-      onClose();
+      onNoteCreated(); // Викликаємо скидання пошуку/сторінки в App
+      onClose(); // Закриваємо модалку
     },
     onError: (error) => {
       console.error("Error creating note:", error);
@@ -106,6 +106,7 @@ export default function NoteForm({ onClose, onNoteCreated }: NoteFormProps) {
                 type="button"
                 className={css.cancelButton}
                 onClick={onClose}
+                disabled={mutation.isPending}
               >
                 Cancel
               </button>

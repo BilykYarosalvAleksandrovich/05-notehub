@@ -1,41 +1,25 @@
-import axios, { type AxiosResponse, isAxiosError } from "axios";
+import axios, { isAxiosError } from "axios";
 import type { Note, NoteTag } from "../types/note";
 
-const API_BASE_URL = "https://notehub-public.goit.study/api";
+// Отримуємо токен
+const token = import.meta.env.VITE_NOTEHUB_TOKEN;
+
+// ⬅️ ВИПРАВЛЕНО: Перевірка на відсутність токена
+if (!token) {
+  console.error(
+    "VITE_NOTEHUB_TOKEN is missing. Please check your .env file and restart the server."
+  );
+  // Кидаємо помилку, якщо токен відсутній
+  throw new Error("VITE_NOTEHUB_TOKEN is missing");
+}
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
-  // Заголовки Content-Type встановлюємо тут, Authorization додаємо через інтерцептор
+  baseURL: "https://notehub-public.goit.study/api",
   headers: {
+    Authorization: `Bearer ${token}`, // Токен встановлюється тут при створенні клієнта
     "Content-Type": "application/json",
   },
 });
-
-// === ІНТЕРЦЕПТОР ДЛЯ ДИНАМІЧНОГО ДОДАВАННЯ ТОКЕНА ===
-// Цей код виконується перед відправкою КОЖНОГО запиту
-api.interceptors.request.use(
-  (config) => {
-    // Зчитуємо токен динамічно перед відправкою
-    const token = import.meta.env.VITE_NOTEHUB_TOKEN;
-
-    if (token) {
-      // Встановлюємо заголовок Authorization
-      config.headers.Authorization = `Bearer ${token}`;
-    } else {
-      console.warn(
-        "Authorization Token (VITE_NOTEHUB_TOKEN) is missing. Check your .env file."
-      );
-    }
-
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-// =======================================================
-
-// === ІНТЕРФЕЙСИ ДАНИХ ===
 
 export interface FetchNotesParams {
   page: number;
@@ -62,42 +46,44 @@ export const fetchNotes = async (
   params: FetchNotesParams
 ): Promise<FetchNotesResponse> => {
   try {
-    const res: AxiosResponse = await api.get("/notes", { params });
-    return res.data as FetchNotesResponse;
+    // Використання дженерика <FetchNotesResponse> забезпечує типобезпечність
+    const res = await api.get<FetchNotesResponse>("/notes", { params });
+    return res.data;
   } catch (error) {
+    // ⬅️ isAxiosError тепер доступний через імпорт
     if (isAxiosError(error) && error.response?.status === 401) {
       console.error(
-        "401 Unauthorized: Failed to fetch notes. Check if token is valid."
+        "401 Unauthorized: Failed to fetch notes. Please check token."
       );
     }
-    // Перекидаємо помилку, щоб її обробив useQuery
     throw error;
   }
 };
 
 export const createNote = async (dto: CreateNoteDto): Promise<Note> => {
   try {
-    const res = await api.post("/notes", dto);
-    return res.data as Note;
+    // Використання дженерика <Note>
+    const res = await api.post<Note>("/notes", dto);
+    return res.data;
   } catch (error) {
     if (isAxiosError(error) && error.response?.status === 401) {
       console.error(
-        "401 Unauthorized: Failed to create note. Check if token is valid."
+        "401 Unauthorized: Failed to create note. Please check token."
       );
     }
-    // Перекидаємо помилку, щоб її обробив useMutation
     throw error;
   }
 };
 
 export const deleteNote = async (id: string): Promise<Note> => {
   try {
-    const res = await api.delete(`/notes/${id}`);
-    return res.data as Note;
+    // Використання дженерика <Note>
+    const res = await api.delete<Note>(`/notes/${id}`);
+    return res.data;
   } catch (error) {
     if (isAxiosError(error) && error.response?.status === 401) {
       console.error(
-        "401 Unauthorized: Failed to delete note. Check if token is valid."
+        "401 Unauthorized: Failed to delete note. Please check token."
       );
     }
     throw error;
