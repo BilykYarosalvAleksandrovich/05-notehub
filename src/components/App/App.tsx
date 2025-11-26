@@ -23,7 +23,6 @@ export default function App() {
 
   const queryClient = useQueryClient();
 
-  // 1. Запит для отримання нотаток
   const { data, isLoading, isError } = useQuery<FetchNotesResponse>({
     queryKey: ["notes", page, debouncedSearch],
     queryFn: () =>
@@ -35,7 +34,6 @@ export default function App() {
     placeholderData: (previousData) => previousData,
   });
 
-  // 2. Мутація для видалення нотатки
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteNote(id),
     onSuccess: () => {
@@ -65,10 +63,7 @@ export default function App() {
           />
         )}
 
-        <button
-          className={css.button} // Змінив на css.button згідно з вимогами
-          onClick={() => setIsModalOpen(true)}
-        >
+        <button className={css.button} onClick={() => setIsModalOpen(true)}>
           Create note +
         </button>
       </header>
